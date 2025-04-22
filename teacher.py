@@ -71,7 +71,10 @@ class TeacherWindow:
         self.network.discover_peers()
 
     def on_peer_discovered(self, message, address):
-        print(f"👋 New peer joined: {address[0]}")
+        ip_address = address[0]
+        if ip_address not in self.network.peers:
+            self.network.peers.append(ip_address)
+            print(f"👋 New peer joined: {ip_address}")
 
     def browse_file(self):
         """Browse for file to share"""
@@ -80,13 +83,12 @@ class TeacherWindow:
             self.file_path.set(file_path)
 
     def broadcast_message(self):
-       message = self.message_entry.get("1.0", tk.END).strip()
-       if message:
-            for peer in self.network.peers:
-                self.network.send_message(peer, message)
-
+        message = self.message_entry.get("1.0", tk.END).strip()
+        if message:
+            for peer_ip in self.network.peers:
+                self.network.send_message(peer_ip, message)
             messagebox.showinfo("Success", "Message broadcasted to all peers")
-       else:
+        else:
             messagebox.showwarning("Empty Message", "Please enter a message to broadcast.")
 
     def send_file_thread(self):
@@ -105,12 +107,12 @@ class TeacherWindow:
             return
 
         successful_sends, failed_sends = 0, 0
-        for peer in self.network.peers:
+        for peer_ip in self.network.peers:
             try:
-                self.network.send_file(file_path, peer[0])
+                self.network.send_file(file_path, peer_ip)
                 successful_sends += 1
             except Exception as e:
-                print(f"❌ Error sending file to {peer[0]}: {e}")
+                print(f"❌ Error sending file to {peer_ip}: {e}")
                 failed_sends += 1
 
         messagebox.showinfo("File Sent", f"File successfully sent to {successful_sends} peer(s), failed for {failed_sends}.")
