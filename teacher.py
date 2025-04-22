@@ -80,13 +80,13 @@ class TeacherWindow:
             self.file_path.set(file_path)
 
     def broadcast_message(self):
-        message = self.message_entry.get()
-        if message:
+       message = self.message_entry.get("1.0", tk.END).strip()
+       if message:
             for peer in self.network.peers:
                 self.network.send_message(peer, message)
 
             messagebox.showinfo("Success", "Message broadcasted to all peers")
-        else:
+       else:
             messagebox.showwarning("Empty Message", "Please enter a message to broadcast.")
 
     def send_file_thread(self):
