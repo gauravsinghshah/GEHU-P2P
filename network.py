@@ -1,63 +1,57 @@
 import socket
 import threading
-import json
 import os
 
 class PeerNetwork:
-    def __init__(self, port=8081):
+    def __init__(self, port=8080):
         self.port = port
-        self.host = socket.gethostbyname(socket.gethostname())
-        self.peers = {}
+        self.peers = []  # List to store discovered peers
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(('', self.port))
 
     def listen_for_peers(self):
         """Listen for incoming peer broadcasts"""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        try:
-            sock.bind(('', self.port))
-            print(f"Listening for peers on port {self.port}...")
-        except OSError as e:
-            print(f"ERROR: Port {self.port} is already in use. Please close the conflicting process or choose a different port.")
-            return  # Exit the function to avoid further issues
-
         while True:
-            data, addr = sock.recvfrom(1024)
-            if data:
-                try:
-                    message = json.loads(data.decode())
-                    if message["type"] == "discover":
-                        self.peers[addr[0]] = message
-                        print(f"Discovered peer: {addr[0]}")
-                except json.JSONDecodeError:
-                    print(f"Received invalid JSON from {addr}")
+            try:
+                message, address = self.socket.recvfrom(1024)
+                message = message.decode('utf-8')
+                if message == "DISCOVER_PEER":
+                    if address[0] not in [peer[0] for peer in self.peers]:
+                        self.peers.append(address)
+                        print(f"Discovered new peer: {address[0]}")
+            except Exception as e:
+                print(f"Error in listening for peers: {e}")
 
     def discover_peers(self):
-        """Broadcast presence to local network"""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        message = json.dumps({
-            "type": "discover",
-            "host": self.host,
-            "port": self.port
-        })
-        try:
-            sock.sendto(message.encode(), ('<broadcast>', self.port))
-            print("Broadcasting presence to local network...")
-        except Exception as e:
-            print(f"Error broadcasting presence: {str(e)}")
-        finally:
-            sock.close()
+        """Broadcast to discover peers"""
+        broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        broadcast_socket.sendto(b"DISCOVER_PEER", ("<broadcast>", self.port))
+        broadcast_socket.close()
 
     def broadcast(self, message):
-        """Broadcast a message to all known peers"""
-        for peer_ip in self.peers:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            try:
-                sock.sendto(message.encode(), (peer_ip, self.port))
-                print(f"Message sent to {peer_ip}")
-            except Exception as e:
-                print(f"Error sending message to {peer_ip}: {str(e)}")
-            finally:
-                sock.close()
+        """Broadcast a message to all peers"""
+        for peer in self.peers:
+            self.socket.sendto(message.encode('utf-8'), peer)
+            print(f"Message sent to {peer[0]}")
+
+    def send_file(self, file_path, peer_ip):
+        """Send a file to a specific peer"""
+        try:
+            file_name = os.path.basename(file_path)
+            with open(file_path, 'rb') as file:
+                file_data = file.read()
+                file_size = len(file_data)
+
+            peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_socket.connect((peer_ip, self.port))
+
+            # Send file information
+            peer_socket.send(f"{file_name},{file_size}".encode('utf-8'))
+
+            # Send file data in chunks
+            peer_socket.sendall(file_data)
+            peer_socket.close()
+            print(f"File sent to {peer_ip}")
+        except Exception as e:
+            print(f"Error sending file to {peer_ip}: {e}")
