@@ -74,20 +74,9 @@ class StudentWindow:
 
         if save_path:
             # Implement actual file download logic here
-            messagebox.showinfo("Success", f"File {file_name} downloaded successfully!")
-
-    def handle_peer_discovery(self, message, addr):
-        """Handle discovered peers and update the UI."""
-        peer_info = f"Discovered peer: {addr[0]}\n"
-        # Schedule the update on the main thread
-        self.root.after(0, self.update_ui, peer_info)
-
-    def update_ui(self, peer_info):
-        """Update the messages text widget in the main thread."""
-        self.messages_text.insert(tk.END, peer_info)
-        self.messages_text.yview(tk.END)  # Scroll to the bottom
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = StudentWindow(root)
-    root.mainloop()
+            messagebox.show
+            messagebox.showinfo("Success", f"File {file_name} downloaded to {save_path}")
+        else:
+            messagebox.showwarning("Warning", "Download cancelled")
+            return
+        
