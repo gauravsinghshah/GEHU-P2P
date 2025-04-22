@@ -154,7 +154,7 @@ class PeerNetwork:
         """Send acknowledgement for received file"""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(5)  # Set timeout for connection
+                s.settimeout(5)  
                 s.connect((peer_ip, self.ack_port))
                 
                 ack_data = json.dumps({
@@ -235,7 +235,7 @@ class PeerNetwork:
                     "file_name": file_name,
                     "file_size": len(received_data),
                     "sender_ip": addr[0],
-                    "file_data": received_data  # Raw binary data
+                    "file_data": received_data 
                 }
                 self.on_file_received(file_data, addr)
 
