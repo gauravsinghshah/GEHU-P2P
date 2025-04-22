@@ -16,6 +16,16 @@ class PeerNetwork:
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', self.port))
 
+    def send_message(self, peer_ip, message):
+        """Send a message to a specific peer using TCP"""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((peer_ip, 50008))  # Connect to peer's TCP port
+                s.sendall(message.encode())  # Send message as bytes
+                print(f"📤 Message sent to {peer_ip}: {message}")
+        except Exception as e:
+            print(f"❌ Error sending message to {peer_ip}: {e}")
+
     def listen_for_peers(self):
         """Listen for incoming peer broadcasts"""
         print(f"📡 Listening for peer discovery on UDP port {self.port}...")
@@ -108,7 +118,7 @@ class PeerNetwork:
             peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             peer_socket.connect((peer_ip, self.file_port))
 
-            # Send metadata
+            # Send metadata (file name, file size)
             metadata = f"{file_name},{file_size}"
             peer_socket.send(metadata.encode('utf-8'))
 
@@ -118,3 +128,4 @@ class PeerNetwork:
             print(f"📤 File sent to {peer_ip}: {file_name} ({file_size} bytes)")
         except Exception as e:
             print(f"❌ Error sending file to {peer_ip}: {e}")
+
