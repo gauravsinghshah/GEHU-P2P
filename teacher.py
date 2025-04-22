@@ -50,11 +50,11 @@ class TeacherWindow:
         
         send_file_btn = tk.Button(file_frame, text="Send File", 
                                bg=self.colors['primary'], fg='white',
-                               command=self.send_file)
+                               command=self.send_file_thread)
         send_file_btn.pack(side=tk.LEFT, padx=5)
         
     def start_listening(self):
-        """Start listening for incoming connections"""
+        """Start listening for incoming peers"""
         listen_thread = threading.Thread(target=self.network.listen_for_peers)
         listen_thread.daemon = True
         listen_thread.start()
@@ -67,30 +67,42 @@ class TeacherWindow:
             
     def broadcast_message(self):
         """Broadcast message to all peers"""
-        message = self.message_entry.get("1.0", tk.END)
-        if message.strip():
+        message = self.message_entry.get("1.0", tk.END).strip()
+        if message:
             self.network.broadcast(message)
-            messagebox.showinfo("Success", "Message sent to all peers")
+            messagebox.showinfo("Success", "Message broadcasted to all peers")
+        else:
+            messagebox.showwarning("Empty Message", "Please enter a message to broadcast.")
             
+    def send_file_thread(self):
+        """Run send_file in a separate thread"""
+        thread = threading.Thread(target=self.send_file)
+        thread.daemon = True
+        thread.start()
+        
     def send_file(self):
         """Send selected file to all peers"""
         file_path = self.file_path.get()
-        if not file_path:
-            messagebox.showwarning("Warning", "Please select a file to send")
+        if not file_path or not os.path.isfile(file_path):
+            messagebox.showwarning("Warning", "Please select a valid file to send")
             return
-            
-        file_name = os.path.basename(file_path)
-        file_size = os.path.getsize(file_path)
 
-        # Open the file and read it in chunks
-        with open(file_path, 'rb') as file:
-            chunk_size = 1024  # 1 KB chunk size
-            file_data = file.read(chunk_size)
-            while file_data:
-                self.network.broadcast(f"file:{file_name}:{file_data.hex()}")
-                file_data = file.read(chunk_size)
+        if not self.network.peers:
+            messagebox.showwarning("No Peers", "No peers discovered to send the file to.")
+            return
+        
+        successful_sends = 0
+        failed_sends = 0
 
-        messagebox.showinfo("Success", "File sent successfully")
+        for peer_ip in self.network.peers:
+            try:
+                self.network.send_file(file_path, peer_ip)
+                successful_sends += 1
+            except Exception as e:
+                print(f"Error sending file to {peer_ip}: {e}")
+                failed_sends += 1
+
+        messagebox.showinfo("File Sent", f"File successfully sent to {successful_sends} peer(s), failed for {failed_sends} peer(s).")
 
 if __name__ == "__main__":
     root = tk.Tk()
