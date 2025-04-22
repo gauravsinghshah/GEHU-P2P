@@ -11,6 +11,7 @@ class SignalHandler(QObject):
     # Define custom signals
     peer_discovered = pyqtSignal(str)
     status_update = pyqtSignal(str)
+    show_message_box = pyqtSignal(str, str, int)  # title, message, icon type
 
 class TeacherWindow(QMainWindow):
     def __init__(self):
@@ -22,6 +23,7 @@ class TeacherWindow(QMainWindow):
         self.signal_handler = SignalHandler()
         self.signal_handler.peer_discovered.connect(self.add_peer_to_list)
         self.signal_handler.status_update.connect(self.update_status)
+        self.signal_handler.show_message_box.connect(self.display_message_box)
         
         # Initialize network
         self.network = PeerNetwork(
@@ -132,6 +134,14 @@ class TeacherWindow(QMainWindow):
         scrollbar = self.status_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
     
+    @pyqtSlot(str, str, int)
+    def display_message_box(self, title, message, icon_type=QMessageBox.Information):
+        """Safely display a message box from the main thread"""
+        if icon_type == QMessageBox.Warning:
+            QMessageBox.warning(self, title, message)
+        else:
+            QMessageBox.information(self, title, message)
+    
     def browse_file(self):
         """Browse for file to share"""
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File")
@@ -142,11 +152,11 @@ class TeacherWindow(QMainWindow):
         """Send message to all connected peers"""
         message = self.message_entry.toPlainText().strip()
         if not message:
-            QMessageBox.warning(self, "Empty Message", "Please enter a message to broadcast.")
+            self.signal_handler.show_message_box.emit("Empty Message", "Please enter a message to broadcast.", QMessageBox.Warning)
             return
             
         if not self.network.peers:
-            QMessageBox.warning(self, "No Peers", "No peers connected to send message to.")
+            self.signal_handler.show_message_box.emit("No Peers", "No peers connected to send message to.", QMessageBox.Warning)
             return
             
         success_count = 0
@@ -164,9 +174,9 @@ class TeacherWindow(QMainWindow):
         
         if success_count > 0:
             self.message_entry.clear()
-            QMessageBox.information(self, "Success", status)
+            self.signal_handler.show_message_box.emit("Success", status, QMessageBox.Information)
         else:
-            QMessageBox.warning(self, "Failed", "Failed to send message to any peers.")
+            self.signal_handler.show_message_box.emit("Failed", "Failed to send message to any peers.", QMessageBox.Warning)
     
     def send_file_thread(self):
         """Run send_file in a separate thread"""
@@ -176,13 +186,13 @@ class TeacherWindow(QMainWindow):
         """Send selected file to all peers"""
         file_path = self.file_path_entry.text()
         if not file_path or not os.path.isfile(file_path):
-            self.signal_handler.status_update.emit("Invalid file selected")
-            QMessageBox.warning(self, "Warning", "Please select a valid file to send")
+            self.signal_handler.status_update.emit(" Invalid file selected")
+            self.signal_handler.show_message_box.emit("Warning", "Please select a valid file to send", QMessageBox.Warning)
             return
         
         if not self.network.peers:
-            self.signal_handler.status_update.emit("No peers discovered")
-            QMessageBox.warning(self, "No Peers", "No peers discovered to send the file to.")
+            self.signal_handler.status_update.emit(" No peers discovered")
+            self.signal_handler.show_message_box.emit("No Peers", "No peers discovered to send the file to.", QMessageBox.Warning)
             return
         
         file_name = os.path.basename(file_path)
@@ -195,18 +205,18 @@ class TeacherWindow(QMainWindow):
             try:
                 if self.network.send_file(file_path, peer_ip):
                     successful_sends += 1
-                    self.signal_handler.status_update.emit(f"Sent to {peer_ip}")
+                    self.signal_handler.status_update.emit(f" Sent to {peer_ip}")
                 else:
                     failed_sends += 1
-                    self.signal_handler.status_update.emit(f"Failed sending to {peer_ip}")
+                    self.signal_handler.status_update.emit(f" Failed sending to {peer_ip}")
             except Exception as e:
                 failed_sends += 1
-                self.signal_handler.status_update.emit(f"Error sending to {peer_ip}: {str(e)}")
+                self.signal_handler.status_update.emit(f" Error sending to {peer_ip}: {str(e)}")
         
         result = f"File successfully sent to {successful_sends} peer(s), failed for {failed_sends}."
         self.signal_handler.status_update.emit(result)
         
-        QMessageBox.information(self, "File Sent", result)
+        self.signal_handler.show_message_box.emit("File Sent", result, QMessageBox.Information)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
