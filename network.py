@@ -10,8 +10,8 @@ class PeerNetwork:
         self.file_port = file_port  # For TCP file transfers
         self.message_port = 50008  # For TCP messages
         self.ack_port = 50010  # For file transfer acknowledgments
-        self.on_peer_discovered = on_peer_discovered
-        self.on_file_received = on_file_received
+        self.on_peer_discovered = on_peer_discovered  # callback function 
+        self.on_file_received = on_file_received  
         self.on_message_received = on_message_received
         self.on_file_ack = on_file_ack
         self.peers = []  # List to store discovered peers
@@ -34,14 +34,14 @@ class PeerNetwork:
             print(f" Error sending message to {peer_ip}: {e}")
             return False
 
-    def listen_for_messages(self):
+    def listen_for_messages(self):                 
         """Listen for incoming messages over TCP"""
         print(f" Listening for messages on TCP port {self.message_port}...")
         msg_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         msg_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
         try:
-            msg_socket.bind(('', self.message_port))
+            msg_socket.bind(('', self.message_port))     # socket is ready to receive UDP messages sent to this port.
             msg_socket.listen(5)
             
             while True:
@@ -58,7 +58,7 @@ class PeerNetwork:
     def _handle_message(self, conn, addr):
         """Handle incoming message connection"""
         try:
-            data = conn.recv(4096)
+            data = conn.recv(4096)         #  receiving data over a TCP connection using a socket
             if data:
                 message = data.decode('utf-8')
                 print(f" Received message from {addr[0]}: {message}")
@@ -76,7 +76,7 @@ class PeerNetwork:
             try:
                 message, address = self.socket.recvfrom(1024)
                 message = message.decode('utf-8')
-                if message == "DISCOVER_PEER":
+                if message == "DISCOVER_PEER":         # Checks if the message is a peer discovery request
                     peer_ip = address[0]
                     # Only add peer if not already in list (comparing just IP)
                     if peer_ip not in [p[0] if isinstance(p, tuple) else p for p in self.peers]:
@@ -94,7 +94,7 @@ class PeerNetwork:
         try:
             print(" Broadcasting peer discovery...")
             broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)           # Enables broadcast mode for this socket
             broadcast_socket.sendto(b"DISCOVER_PEER", ("<broadcast>", self.port))
             broadcast_socket.close()
         except Exception as e:
@@ -137,9 +137,10 @@ class PeerNetwork:
     def _handle_ack(self, conn, addr):
         """Handle incoming file acknowledgement"""
         try:
-            data = conn.recv(1024)
+            data = conn.recv(1024)          #  Receive up to 1024 bytes of data (ACK information)
             if data:
-                ack_data = json.loads(data.decode('utf-8'))
+                ack_data = json.loads(data.decode('utf-8'))      # Deserialize the JSON data into a Python dictionary
+                # Extract file name and status from the received ACK data
                 file_name = ack_data.get('file_name', 'unknown')
                 status = ack_data.get('status', 'unknown')
                 print(f" Received ACK from {addr[0]} for file {file_name}: {status}")
