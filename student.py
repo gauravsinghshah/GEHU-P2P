@@ -6,7 +6,6 @@ from pathlib import Path
 import json
 from network import PeerNetwork
 
-
 class StudentWindow:
     def __init__(self, root):
         self.root = root
@@ -58,25 +57,33 @@ class StudentWindow:
                                  command=self.download_file)
         download_btn.pack(fill=tk.X, padx=5, pady=5)
 
-    def handle_file_received(self, file_name, file_data, sender_ip):
-        """Callback for when a file is received via TCP."""
+    def handle_file_received(self, payload, sender_address):
+        """Handles file or message payloads from the teacher."""
         try:
-            # Save file
-            save_dir = Path.home() / "Downloads" / "GEHU_P2P_Received"
-            save_dir.mkdir(parents=True, exist_ok=True)
-            file_path = save_dir / file_name
-            with open(file_path, 'wb') as f:
-                f.write(file_data)
+            data = json.loads(payload.decode())
+            file_name = data["file_name"]
+            file_data = bytes.fromhex(data["file_data"])
+            sender_ip = sender_address[0]
 
-            # Update UI
-            self.root.after(0, self.update_ui, f"✅ Received file: {file_name} from {sender_ip}\n")
-            self.root.after(0, lambda: self.files_tree.insert("", tk.END, values=(
-                file_name, f"{len(file_data)//1024} KB", sender_ip)))
+            if file_name == "__message__.txt":
+                text = file_data.decode()
+                display_msg = f"📩 Message from {sender_ip}: {text}\n"
+                self.root.after(0, self.update_ui, display_msg)
+            else:
+                save_dir = Path.home() / "Downloads" / "GEHU_P2P_Received"
+                save_dir.mkdir(parents=True, exist_ok=True)
+                file_path = save_dir / file_name
+                with open(file_path, 'wb') as f:
+                    f.write(file_data)
+
+                self.root.after(0, self.update_ui, f"✅ Received file: {file_name} from {sender_ip}\n")
+                self.root.after(0, lambda: self.files_tree.insert("", tk.END, values=(
+                    file_name, f"{len(file_data) // 1024} KB", sender_ip)))
+
         except Exception as e:
             self.root.after(0, self.update_ui, f"❌ Error handling file: {str(e)}\n")
 
     def handle_peer_discovery(self, message, addr):
-        """Handle discovered peers and update the UI."""
         peer_info = f"🔍 Discovered peer: {addr[0]}\n"
         self.root.after(0, self.update_ui, peer_info)
 
@@ -95,7 +102,6 @@ class StudentWindow:
                                                  initialfile=file_name)
 
         if save_path:
-            # For now, simulate that the file was downloaded.
             messagebox.showinfo("Success", f"File {file_name} downloaded successfully!")
 
     def start_listening(self):
@@ -105,7 +111,6 @@ class StudentWindow:
     def join_session(self):
         self.network.discover_peers()
         self.root.after(1000, lambda: messagebox.showinfo("Success", "Connected to the session"))
-
 
 if __name__ == "__main__":
     root = tk.Tk()
