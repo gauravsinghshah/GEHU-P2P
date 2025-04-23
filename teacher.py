@@ -13,7 +13,7 @@ class SignalHandler(QObject):
     status_update = pyqtSignal(str)
     show_message_box = pyqtSignal(str, str, int)
 
-
+// Teacher authentication 
 class LoginWindow(QWidget):
     def __init__(self):
             super().__init__()
