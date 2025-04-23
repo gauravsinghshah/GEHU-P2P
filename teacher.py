@@ -8,10 +8,47 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from network import PeerNetwork
 
 class SignalHandler(QObject):
-    # Define custom signals
+    
     peer_discovered = pyqtSignal(str)
     status_update = pyqtSignal(str)
-    show_message_box = pyqtSignal(str, str, int)  # title, message, icon type
+    show_message_box = pyqtSignal(str, str, int)
+
+
+class LoginWindow(QWidget):
+    def __init__(self):
+            super().__init__()
+            self.setWindowTitle("Teacher Login - GEHU P2P")
+            self.resize(300, 150)
+            
+            layout = QVBoxLayout()
+
+            self.username_input = QLineEdit()
+            self.username_input.setPlaceholderText("Username")
+            layout.addWidget(self.username_input)
+
+            self.password_input = QLineEdit()
+            self.password_input.setPlaceholderText("Password")
+            self.password_input.setEchoMode(QLineEdit.Password)
+            layout.addWidget(self.password_input)
+
+            login_btn = QPushButton("Login")
+            login_btn.clicked.connect(self.check_login)
+            layout.addWidget(login_btn)
+
+            self.setLayout(layout)
+
+    def check_login(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text().strip()
+
+        # Simple hardcoded check (replace with secure validation later)
+        if username == "teacher" and password == "gehu123":
+            self.teacher_window = TeacherWindow()
+            self.teacher_window.show()
+            self.close()
+        else:
+            QMessageBox.warning(self, "Login Failed", "Invalid username or password")
+ 
 
 class TeacherWindow(QMainWindow):
     def __init__(self):
@@ -34,6 +71,7 @@ class TeacherWindow(QMainWindow):
         
         self.init_ui()
         self.start_listening()
+
     
     def init_ui(self):
         # Main widget and layout
@@ -220,6 +258,6 @@ class TeacherWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = TeacherWindow()
-    window.show()
+    login_window = LoginWindow()
+    login_window.show()
     sys.exit(app.exec_())
